@@ -136,7 +136,8 @@ function handleTop250(pageStart: number) {
         const rate = match[4] || '';
 
         // 处理图片 URL，确保使用 HTTPS
-        const processedCover = cover.replace(/^http:/, 'https:');
+        const processedCover = cover.replace(/^http:/, 'https:')
+            .replace(/img\d*\.doubanio\.com/g, 'img.doubanio.cmliussss.net');
 
         movies.push({
           id: id,
