@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* eslint-disable */
-// 根据 SITE_NAME 动态生成 manifest.json
+// 根据 SITE_NAME2 动态生成 manifest.json
 
 const fs = require('fs');
 const path = require('path');
@@ -11,7 +11,7 @@ const publicDir = path.join(projectRoot, 'public');
 const manifestPath = path.join(publicDir, 'manifest.json');
 
 // 从环境变量获取站点名称
-const siteName = process.env.SITE_NAME || 'MoonTV';
+const siteName = process.env.SITE_NAME2 || 'MoonTV';
 
 // manifest.json 模板
 const manifestTemplate = {
