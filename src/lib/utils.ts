@@ -4,6 +4,15 @@ import he from 'he';
 import Hls from 'hls.js';
 
 /**
+ * 替换豆瓣图片地址
+ * @param url
+ */
+export const replaceDoubanImageUrl = (url: string): string => {
+  if (!url) return '';
+  return url.replace(/img\d*\.doubanio\.com/g, 'img.doubanio.cmliussss.net');
+};
+
+/**
  * 获取图片代理 URL 设置
  */
 export function getImageProxyUrl(): string | null {
@@ -36,7 +45,7 @@ export function processImageUrl(originalUrl: string): string {
   if (!originalUrl) return originalUrl;
 
   const proxyUrl = getImageProxyUrl();
-  if (!proxyUrl) return originalUrl;
+  if (!proxyUrl) return replaceDoubanImageUrl(originalUrl);
 
   return `${proxyUrl}${encodeURIComponent(originalUrl)}`;
 }
