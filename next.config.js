@@ -9,6 +9,21 @@ const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
 
+  async headers() {
+    return [
+      {
+        // 应用到所有路由，或精确指定到你的API路由，如 '/api/:path*'
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Netlify-Vary',
+            value: 'query', // 关键：告诉Netlify区分查询参数
+          },
+        ],
+      },
+    ];
+  },
+
   // Uncoment to add domain whitelist
   images: {
     unoptimized: true,
