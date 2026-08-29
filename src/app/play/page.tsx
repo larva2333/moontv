@@ -1284,6 +1284,8 @@ function PlayPageClient() {
       cleanupPlayer();
     }
 
+    let clickToggleTimer: ReturnType<typeof setTimeout> | null = null;
+
     try {
       // 创建新的播放器实例
       Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
@@ -1320,6 +1322,24 @@ function PlayPageClient() {
         fastForward: true,
         autoOrientation: true,
         lock: true,
+        // 单击延迟处理：区分单击与双击，双击全屏时不打断播放
+        click: function () {
+          if (clickToggleTimer) clearTimeout(clickToggleTimer);
+          clickToggleTimer = setTimeout(() => {
+            artPlayerRef.current?.toggle();
+            clickToggleTimer = null;
+          }, 250);
+        },
+        dblclick: function () {
+          // 双击只切换全屏，取消待执行的播放/暂停切换
+          if (clickToggleTimer) {
+            clearTimeout(clickToggleTimer);
+            clickToggleTimer = null;
+          }
+          if (artPlayerRef.current) {
+            artPlayerRef.current.fullscreen = !artPlayerRef.current.fullscreen;
+          }
+        },
         moreVideoAttr: {
           crossOrigin: 'anonymous',
         },
@@ -1657,6 +1677,10 @@ function PlayPageClient() {
       console.error('创建播放器失败:', err);
       setError('播放器初始化失败');
     }
+
+    return () => {
+      if (clickToggleTimer) clearTimeout(clickToggleTimer);
+    };
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
   // 当组件卸载时清理定时器、Wake Lock 和播放器资源
