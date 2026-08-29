@@ -1285,6 +1285,7 @@ function PlayPageClient() {
     }
 
     let clickToggleTimer: ReturnType<typeof setTimeout> | null = null;
+    let removeVideoClickCapture: (() => void) | null = null;
 
     try {
       // 创建新的播放器实例
@@ -1322,24 +1323,6 @@ function PlayPageClient() {
         fastForward: true,
         autoOrientation: true,
         lock: true,
-        // 单击延迟处理：区分单击与双击，双击全屏时不打断播放
-        click: function () {
-          if (clickToggleTimer) clearTimeout(clickToggleTimer);
-          clickToggleTimer = setTimeout(() => {
-            artPlayerRef.current?.toggle();
-            clickToggleTimer = null;
-          }, 250);
-        },
-        dblclick: function () {
-          // 双击只切换全屏，取消待执行的播放/暂停切换
-          if (clickToggleTimer) {
-            clearTimeout(clickToggleTimer);
-            clickToggleTimer = null;
-          }
-          if (artPlayerRef.current) {
-            artPlayerRef.current.fullscreen = !artPlayerRef.current.fullscreen;
-          }
-        },
         moreVideoAttr: {
           crossOrigin: 'anonymous',
         },
@@ -1511,6 +1494,34 @@ function PlayPageClient() {
         ],
       });
 
+      // 自定义单击/双击：单击延迟切播放，双击只切全屏（不中断播放）
+      // Artplayer 默认在捕获后的冒泡阶段处理单击切播放、双击切全屏，这里在
+      // 捕获阶段拦截并阻止其默认逻辑，避免双击时播放被切一下。
+      const player = artPlayerRef.current;
+      if (player && player.video) {
+        const videoEl = player.video as HTMLVideoElement;
+        const DBLCLICK_DELAY = 300;
+        const onVideoClickCapture = (event: MouseEvent) => {
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          if (clickToggleTimer) {
+            // 双击：取消待执行的播放切换，仅切换全屏
+            clearTimeout(clickToggleTimer);
+            clickToggleTimer = null;
+            player.fullscreen = !player.fullscreen;
+          } else {
+            clickToggleTimer = setTimeout(() => {
+              clickToggleTimer = null;
+              player.toggle();
+            }, DBLCLICK_DELAY);
+          }
+        };
+        videoEl.addEventListener('click', onVideoClickCapture, true);
+        removeVideoClickCapture = () => {
+          videoEl.removeEventListener('click', onVideoClickCapture, true);
+        };
+      }
+
       // 监听播放器事件
       artPlayerRef.current.on('ready', () => {
         setError(null);
@@ -1680,6 +1691,10 @@ function PlayPageClient() {
 
     return () => {
       if (clickToggleTimer) clearTimeout(clickToggleTimer);
+      if (removeVideoClickCapture) {
+        removeVideoClickCapture();
+        removeVideoClickCapture = null;
+      }
     };
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
