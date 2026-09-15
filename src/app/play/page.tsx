@@ -21,6 +21,7 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
+import { filterAdsFromM3U8 } from '@/lib/m3u8AdFilter';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
@@ -494,129 +495,6 @@ function PlayPageClient() {
       }
     }
   };
-
-  // 去广告相关函数
-  // 原理：广告段与正片的编码帧率通常不同，导致其分片时长落在不同的帧网格上。
-  // 先推断正片主帧率，再把偏离该网格的整段分片从播放列表中剔除。
-  // 与旧实现（无差别删除全部 DISCONTINUITY、依赖解码失败丢段）相比，
-  // 这里只删除明确异常的分片，且保留 DISCONTINUITY 标记，不会误伤正片段。
-  function filterAdsFromM3U8(m3u8Content: string): string {
-    if (!m3u8Content) return '';
-
-    const EXTINF_RE = /^#EXTINF:([0-9.]+)/;
-    const lines = m3u8Content.split('\n');
-
-    // 收集全部分片时长
-    const durations: number[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      const m = EXTINF_RE.exec(lines[i].trim());
-      if (m) durations.push(parseFloat(m[1]));
-    }
-
-    // master playlist（无分片）或分片太少不足以判定帧率时，保持原样
-    if (durations.length < 8) return m3u8Content;
-
-    // 1. 推断正片主帧率：命中率最高者胜；命中数相同时取较小帧率
-    //    （粗网格是细网格的子集，取较小的更严格、更保守）
-    const CANDIDATE_FPS = [23.976, 24, 25, 29.97, 30, 50, 59.94, 60];
-    let bestFps = 0;
-    let bestHit = -1;
-    for (let f = 0; f < CANDIDATE_FPS.length; f++) {
-      const fps = CANDIDATE_FPS[f];
-      const g = 1 / fps;
-      let hit = 0;
-      for (let i = 0; i < durations.length; i++) {
-        const r = durations[i] / g;
-        if (Math.abs(r - Math.round(r)) < 0.02) hit++;
-      }
-      if (hit > bestHit || (hit === bestHit && fps < bestFps)) {
-        bestHit = hit;
-        bestFps = fps;
-      }
-    }
-
-    const grid = 1 / bestFps;
-    const onGrid = (d: number): boolean => {
-      const r = d / grid;
-      return Math.abs(r - Math.round(r)) < 0.02;
-    };
-
-    // 2. 按 #EXT-X-DISCONTINUITY 分段，段内任一分片偏离网格即整段判为广告
-    //    （必须段级判定：0.2s 这类值是 25/30 网格的公倍数，逐片判定会漏）
-    const segIsAd: boolean[] = [];
-    let seg = -1;
-    for (let i = 0; i < lines.length; i++) {
-      const t = lines[i].trim();
-      if (t === '#EXT-X-DISCONTINUITY') {
-        segIsAd.push(false);
-        seg = segIsAd.length - 1;
-      } else if (seg >= 0) {
-        const m = EXTINF_RE.exec(t);
-        if (m && !onGrid(parseFloat(m[1]))) segIsAd[seg] = true;
-      }
-    }
-
-    const adSegCount = segIsAd.filter(Boolean).length;
-
-    // 没有异常段：原样返回，对该源不做任何改动
-    if (adSegCount === 0) return m3u8Content;
-
-    // 3. 剔除广告段的分片（#EXTINF 行 + 紧随其后的分片 URL 行）
-    //    保留 DISCONTINUITY 标记，段边界的参数重探测不受影响
-    const drop = new Set<number>();
-    seg = -1;
-    for (let i = 0; i < lines.length; i++) {
-      const t = lines[i].trim();
-      if (t === '#EXT-X-DISCONTINUITY') {
-        seg++;
-        continue;
-      }
-      if (seg >= 0 && segIsAd[seg] && EXTINF_RE.test(t)) {
-        drop.add(i);
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim() === '') j++;
-        if (j < lines.length && !lines[j].trim().startsWith('#')) drop.add(j);
-      }
-    }
-
-    const kept: string[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (!drop.has(i)) kept.push(lines[i]);
-    }
-
-    // 4. 清理因整段删空而产生的连续 DISCONTINUITY
-    const out: string[] = [];
-    let prevDisc = false;
-    for (let i = 0; i < kept.length; i++) {
-      const t = kept[i].trim();
-      if (t === '#EXT-X-DISCONTINUITY') {
-        if (prevDisc) continue;
-        prevDisc = true;
-      } else if (t) {
-        prevDisc = false;
-      }
-      out.push(kept[i]);
-    }
-
-    if (process.env.NODE_ENV === 'development') {
-      let remain = 0;
-      for (let i = 0; i < out.length; i++) {
-        if (EXTINF_RE.test(out[i].trim())) remain++;
-      }
-      console.log(
-        `[去广告] 主帧率 ${bestFps}fps（网格 ${grid.toFixed(
-          6
-        )}s，命中 ${bestHit}/${durations.length}）`
-      );
-      console.log(
-        `[去广告] 剔除 ${adSegCount}/${segIsAd.length} 段，分片 ${
-          durations.length
-        } -> ${remain}`
-      );
-    }
-
-    return out.join('\n');
-  }
 
   // 跳过片头片尾配置相关函数
   const handleSkipConfigChange = async (newConfig: {
