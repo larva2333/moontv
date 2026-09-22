@@ -129,6 +129,10 @@ function PlayPageClient() {
   const videoYearRef = useRef(videoYear);
   const detailRef = useRef<SearchResult | null>(detail);
   const currentEpisodeIndexRef = useRef(currentEpisodeIndex);
+  // 双击拦截监听相关：切集时 Artplayer 会替换 <video>，需自动重挂
+  const clickGuardDetachRef = useRef<(() => void) | null>(null);
+  const videoSwapObserverRef = useRef<MutationObserver | null>(null);
+  const lastGuardedVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // 同步最新值到 refs
   useEffect(() => {
@@ -477,6 +481,16 @@ function PlayPageClient() {
 
   // 清理播放器资源的统一函数
   const cleanupPlayer = () => {
+    // 清理双击拦截 observer 与监听，避免切集/销毁时泄漏
+    if (videoSwapObserverRef.current) {
+      videoSwapObserverRef.current.disconnect();
+      videoSwapObserverRef.current = null;
+    }
+    if (clickGuardDetachRef.current) {
+      clickGuardDetachRef.current();
+      clickGuardDetachRef.current = null;
+    }
+    lastGuardedVideoRef.current = null;
     if (artPlayerRef.current) {
       try {
         // 销毁 HLS 实例
@@ -494,6 +508,60 @@ function PlayPageClient() {
         artPlayerRef.current = null;
       }
     }
+  };
+
+  // 在 video 元素上挂双击拦截：单击延迟切播放，双击只切全屏（不中断播放）
+  // 抽成函数，供初次创建与切集(switch 替换 video 后)重复调用
+  const attachDoubleClickGuard = (player: any) => {
+    const videoEl = player?.video as HTMLVideoElement | undefined;
+    if (!videoEl) return;
+    if (lastGuardedVideoRef.current === videoEl) return; // 同一元素已挂，跳过
+    if (clickGuardDetachRef.current) {
+      clickGuardDetachRef.current();
+      clickGuardDetachRef.current = null;
+    }
+    const DBLCLICK_DELAY = 300;
+    let clickToggleTimer: ReturnType<typeof setTimeout> | null = null;
+    const onVideoClickCapture = (event: MouseEvent) => {
+      event.stopImmediatePropagation();
+      event.preventDefault();
+      if (clickToggleTimer) {
+        // 双击：取消待执行的播放切换，仅切换全屏
+        clearTimeout(clickToggleTimer);
+        clickToggleTimer = null;
+        player.fullscreen = !player.fullscreen;
+      } else {
+        clickToggleTimer = setTimeout(() => {
+          clickToggleTimer = null;
+          player.toggle();
+        }, DBLCLICK_DELAY);
+      }
+    };
+    videoEl.addEventListener('click', onVideoClickCapture, true);
+    lastGuardedVideoRef.current = videoEl;
+    clickGuardDetachRef.current = () => {
+      videoEl.removeEventListener('click', onVideoClickCapture, true);
+      if (clickToggleTimer) {
+        clearTimeout(clickToggleTimer);
+        clickToggleTimer = null;
+      }
+      lastGuardedVideoRef.current = null;
+    };
+  };
+
+  // 监控播放器容器内 video 元素被替换(Artplayer switch 会换 video)，自动重挂双击拦截
+  const startVideoSwapWatch = (_player: any) => {
+    if (videoSwapObserverRef.current) {
+      videoSwapObserverRef.current.disconnect();
+      videoSwapObserverRef.current = null;
+    }
+    if (!artRef.current) return;
+    const observer = new MutationObserver(() => {
+      const p = artPlayerRef.current;
+      if (p) attachDoubleClickGuard(p);
+    });
+    observer.observe(artRef.current, { childList: true, subtree: true });
+    videoSwapObserverRef.current = observer;
   };
 
   // 跳过片头片尾配置相关函数
@@ -1265,9 +1333,6 @@ function PlayPageClient() {
       cleanupPlayer();
     }
 
-    let clickToggleTimer: ReturnType<typeof setTimeout> | null = null;
-    let removeVideoClickCapture: (() => void) | null = null;
-
     try {
       // 创建新的播放器实例
       Artplayer.PLAYBACK_RATE = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
@@ -1476,31 +1541,11 @@ function PlayPageClient() {
       });
 
       // 自定义单击/双击：单击延迟切播放，双击只切全屏（不中断播放）
-      // Artplayer 默认在捕获后的冒泡阶段处理单击切播放、双击切全屏，这里在
-      // 捕获阶段拦截并阻止其默认逻辑，避免双击时播放被切一下。
+      // video 元素可能被 Artplayer.switch 替换，故用 MutationObserver 自动重挂
       const player = artPlayerRef.current;
-      if (player && player.video) {
-        const videoEl = player.video as HTMLVideoElement;
-        const DBLCLICK_DELAY = 300;
-        const onVideoClickCapture = (event: MouseEvent) => {
-          event.stopImmediatePropagation();
-          event.preventDefault();
-          if (clickToggleTimer) {
-            // 双击：取消待执行的播放切换，仅切换全屏
-            clearTimeout(clickToggleTimer);
-            clickToggleTimer = null;
-            player.fullscreen = !player.fullscreen;
-          } else {
-            clickToggleTimer = setTimeout(() => {
-              clickToggleTimer = null;
-              player.toggle();
-            }, DBLCLICK_DELAY);
-          }
-        };
-        videoEl.addEventListener('click', onVideoClickCapture, true);
-        removeVideoClickCapture = () => {
-          videoEl.removeEventListener('click', onVideoClickCapture, true);
-        };
+      if (player) {
+        attachDoubleClickGuard(player);
+        startVideoSwapWatch(player);
       }
 
       // 监听播放器事件
@@ -1669,14 +1714,6 @@ function PlayPageClient() {
       console.error('创建播放器失败:', err);
       setError('播放器初始化失败');
     }
-
-    return () => {
-      if (clickToggleTimer) clearTimeout(clickToggleTimer);
-      if (removeVideoClickCapture) {
-        removeVideoClickCapture();
-        removeVideoClickCapture = null;
-      }
-    };
   }, [Artplayer, Hls, videoUrl, loading, blockAdEnabled]);
 
   // 当组件卸载时清理定时器、Wake Lock 和播放器资源
