@@ -84,14 +84,13 @@ function PlayPageClient() {
   // 跳过检查的时间间隔控制
   const lastSkipCheckRef = useRef(0);
 
-  // 去广告开关（从 localStorage 继承，默认 true）
-  const [blockAdEnabled, setBlockAdEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const v = localStorage.getItem('enable_blockad');
-      if (v !== null) return v === 'true';
-    }
-    return true;
-  });
+  // 去广告开关：初始用固定默认值，客户端挂载后再从 localStorage 读取，避免 SSR/CSR 水合不一致（React #423）
+  const [blockAdEnabled, setBlockAdEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    const v = localStorage.getItem('enable_blockad');
+    if (v !== null) setBlockAdEnabled(v === 'true');
+  }, []);
   const blockAdEnabledRef = useRef(blockAdEnabled);
   useEffect(() => {
     blockAdEnabledRef.current = blockAdEnabled;
@@ -171,20 +170,19 @@ function PlayPageClient() {
     null
   );
 
-  // 优选和测速开关
-  const [optimizationEnabled] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('enableOptimization');
-      if (saved !== null) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          /* ignore */
-        }
+  // 优选和测速开关：初始用固定默认值，客户端挂载后再从 localStorage 读取，避免 SSR/CSR 水合不一致（React #423）
+  const [optimizationEnabled, setOptimizationEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('enableOptimization');
+    if (saved !== null) {
+      try {
+        setOptimizationEnabled(JSON.parse(saved));
+      } catch {
+        /* ignore */
       }
     }
-    return true;
-  });
+  }, []);
 
   // 保存优选时的测速结果，避免EpisodeSelector重复测速
   const [precomputedVideoInfo, setPrecomputedVideoInfo] = useState<

@@ -42,9 +42,12 @@ function SearchPageClient() {
     return true; // 默认启用聚合
   };
 
-  const [viewMode, setViewMode] = useState<'agg' | 'all'>(() => {
-    return getDefaultAggregate() ? 'agg' : 'all';
-  });
+  // 初始用固定默认值，客户端挂载后再从 localStorage 读取，避免 SSR/CSR 水合不一致（React #423）
+  const [viewMode, setViewMode] = useState<'agg' | 'all'>('agg');
+
+  useEffect(() => {
+    setViewMode(getDefaultAggregate() ? 'agg' : 'all');
+  }, []);
 
   // 聚合后的结果（按标题和年份分组）
   const aggregatedResults = useMemo(() => {
