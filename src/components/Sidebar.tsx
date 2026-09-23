@@ -4,7 +4,7 @@
 
 import { Clover, Film, Home, Menu, Search, Star, Tv } from 'lucide-react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   createContext,
   useCallback,
@@ -78,7 +78,9 @@ const useIsoLayoutEffect =
 const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  // 注意：此处不使用 useSearchParams()，因为它必须在 <Suspense> 内调用；
+  // 在顶层调用会导致整个经 PageLayout 的页面触发整页 CSR bailout 与 hydration
+  // mismatch（React #418）。导航高亮只需 pathname，无需 query 参数。
   // 初始态固定为展开(false)，与 SSR 输出的 w-64 完全一致，从根消除 Hydration
   // mismatch(#418)。真实折叠态由下方 layoutEffect 在绘制前读取 localStorage 同步应用，
   // 配合 layout.tsx 内联脚本与 globals.css 的 html[data-sidebar-collapsed] 规则，
@@ -135,15 +137,11 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     if (activePath) {
       setActive(activePath);
     } else {
-      // 否则使用当前路径
-      const getCurrentFullPath = () => {
-        const queryString = searchParams.toString();
-        return queryString ? `${pathname}?${queryString}` : pathname;
-      };
-      const fullPath = getCurrentFullPath();
-      setActive(fullPath);
+      // 否则使用当前路径（导航高亮只看 pathname，无需 query 参数，
+      // 同时避免调用 useSearchParams 引发整页 hydration mismatch）
+      setActive(pathname);
     }
-  }, [activePath, pathname, searchParams]);
+  }, [activePath, pathname]);
 
   const handleToggle = useCallback(() => {
     const newState = !isCollapsed;
