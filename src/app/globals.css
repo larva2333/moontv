@@ -182,11 +182,20 @@ html[data-sidebar-collapsed='true'] [data-sidebar] {
 html[data-sidebar-collapsed='true'] .sidebar-offset {
   width: 4rem !important;
 }
-/* 收起态直接隐藏菜单文字标签（与 SSR 首帧一致，避免刷新瞬间文字溢出闪现） */
+/* 收起态首帧（SSR 仍渲染展开态 Logo）靠 CSS 隐藏文字、保留图标，与收起按钮一致，杜绝刷新闪一下 */
 html[data-sidebar-collapsed='true'] [data-sidebar] span.whitespace-nowrap {
   display: none !important;
 }
-/* 收起态隐藏头部展开的 Logo（SSR 首帧仍会渲染，靠 CSS 在首帧即隐藏，杜绝刷新闪一下） */
-html[data-sidebar-collapsed='true'] [data-sidebar] .relative.h-16 > a {
+html[data-sidebar-collapsed='true'] [data-sidebar] [data-sidebar-collapse] {
   display: none !important;
+}
+
+/* 侧栏文字单独成层并锁行高，避免字体回退或 backdrop 重绘时基线跳动 */
+[data-sidebar] {
+  font-family: ui-sans-serif, system-ui, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  font-synthesis: none;
+}
+[data-sidebar] .sidebar-text {
+  line-height: 1;
 }

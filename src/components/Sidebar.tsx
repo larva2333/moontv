@@ -11,6 +11,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -32,20 +33,24 @@ const Logo = () => {
   return (
     <Link
       href='/'
-      className='flex items-center justify-center gap-2 h-16 select-none hover:opacity-80 transition-opacity duration-200'
+      className='flex items-center justify-start gap-2 h-16 pl-4 select-none hover:opacity-80 transition-opacity duration-200'
     >
       {/* 浅色模式用蓝色电视，深色模式用白色电视 */}
       <img
         src='/icons/icon-192x192.png'
         alt='logo'
-        className='h-8 w-8 object-contain block dark:hidden'
+        width={32}
+        height={32}
+        className='h-8 w-8 shrink-0 object-contain block dark:hidden'
       />
       <img
         src='/icons/icon-192x192-dark.png'
         alt='logo'
-        className='h-8 w-8 object-contain hidden dark:block'
+        width={32}
+        height={32}
+        className='h-8 w-8 shrink-0 object-contain hidden dark:block'
       />
-      <span className='text-2xl font-bold text-green-600 tracking-tight'>
+      <span className='sidebar-text whitespace-nowrap inline-flex h-8 items-center text-2xl font-bold leading-none text-green-600 tracking-tight'>
         {siteName}
       </span>
     </Link>
@@ -77,16 +82,41 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   // 初始态固定为展开(false)：服务端渲染与客户端水合首帧完全一致，
   // 从根本上消除 Hydration mismatch；真实折叠状态由下方 layoutEffect 在绘制前同步应用。
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
+  // 刷新/SSR 默认展开，折叠按钮应首帧可见，避免晚 320ms 才挂载导致闪一下。
+  const [menuReady, setMenuReady] = useState(true);
+  const [widthReady, setWidthReady] = useState(false);
+  const isFirstMenuEffect = useRef(true);
 
   useIsoLayoutEffect(() => {
     try {
       const saved = localStorage.getItem('sidebarCollapsed');
       const collapsed = saved !== null ? (JSON.parse(saved) as boolean) : false;
       setIsCollapsed(collapsed);
+      setMenuReady(!collapsed);
       window.__sidebarCollapsed = collapsed;
     } catch {
       /* 忽略 localStorage 读取失败 */
     }
+  }, []);
+
+  // 仅在用户点击「从收起展开」后延迟显示按钮，避免宽条动画中途按钮抢先出现。
+  // 首轮 effect 与 layoutEffect 同步过的状态对齐，不再额外延时。
+  useEffect(() => {
+    if (isFirstMenuEffect.current) {
+      isFirstMenuEffect.current = false;
+      return;
+    }
+    if (isCollapsed) {
+      setMenuReady(false);
+      return;
+    }
+    const t = setTimeout(() => setMenuReady(true), 320);
+    return () => clearTimeout(t);
+  }, [isCollapsed]);
+
+  // 首帧关闭 width transition，避免刷新时从默认值过渡到目标宽度带动整栏抖动。
+  useEffect(() => {
+    setWidthReady(true);
   }, []);
 
   const [active, setActive] = useState(activePath);
@@ -169,17 +199,22 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       <div className='hidden md:flex'>
         <aside
           data-sidebar
-          className={`fixed top-0 left-0 h-screen bg-white/40 backdrop-blur-xl transition-all duration-300 border-r border-gray-200/50 z-10 shadow-lg dark:bg-gray-900/70 dark:border-gray-700/50 ${
-            isCollapsed ? 'w-16' : 'w-64'
-          }`}
-          style={{
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-          }}
+          className={`fixed top-0 left-0 isolate z-10 h-screen border-r border-gray-200/50 shadow-lg dark:border-gray-700/50 ${
+            widthReady ? 'transition-[width] duration-300' : ''
+          } ${isCollapsed ? 'w-16' : 'w-64'}`}
         >
-          <div className='flex h-full flex-col'>
+          {/* 模糊层与文字分离，避免 overflow + backdrop-filter 在刷新时把文字重新栅格化导致上跳 */}
+          <div
+            aria-hidden
+            className='pointer-events-none absolute inset-0 -z-10 bg-white/40 backdrop-blur-xl dark:bg-gray-900/70'
+            style={{
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+            }}
+          />
+          <div className='relative flex h-full flex-col overflow-x-hidden'>
             {/* 顶部 Logo 区域 */}
-            <div className='relative h-16'>
+            <div className='relative h-16 shrink-0'>
               {!isCollapsed ? (
                 <Logo />
               ) : (
@@ -187,23 +222,29 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                   type='button'
                   onClick={handleToggle}
                   aria-label='展开侧边栏'
-                  className='flex w-full items-center justify-center cursor-pointer bg-transparent border-0 p-0 appearance-none hover:opacity-80 transition-opacity duration-200 h-16'
+                  className='flex w-full items-center justify-start pl-4 cursor-pointer bg-transparent border-0 p-0 appearance-none hover:opacity-80 transition-opacity duration-200 h-16'
                 >
                   <img
                     src='/icons/icon-192x192.png'
                     alt='logo'
-                    className='h-8 w-8 object-contain block dark:hidden'
+                    width={32}
+                    height={32}
+                    className='h-8 w-8 shrink-0 object-contain block dark:hidden'
                   />
                   <img
                     src='/icons/icon-192x192-dark.png'
                     alt='logo'
-                    className='h-8 w-8 object-contain hidden dark:block'
+                    width={32}
+                    height={32}
+                    className='h-8 w-8 shrink-0 object-contain hidden dark:block'
                   />
                 </button>
               )}
-              {!isCollapsed && (
+              {menuReady && (
                 <button
                   onClick={handleToggle}
+                  data-sidebar-collapse
+                  aria-label='收起侧边栏'
                   className='absolute top-1/2 -translate-y-1/2 right-2 flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors duration-200 z-10 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50'
                 >
                   <Menu className='h-4 w-4' />
@@ -224,11 +265,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 <div className='w-4 h-4 flex items-center justify-center'>
                   <Home className='h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400' />
                 </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    首页
-                  </span>
-                )}
+                <span className='sidebar-text inline-flex h-4 items-center whitespace-nowrap leading-none'>
+                  首页
+                </span>
               </Link>
               <Link
                 href='/search'
@@ -245,11 +284,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                 <div className='w-4 h-4 flex items-center justify-center'>
                   <Search className='h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400' />
                 </div>
-                {!isCollapsed && (
-                  <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                    搜索
-                  </span>
-                )}
+                <span className='sidebar-text inline-flex h-4 items-center whitespace-nowrap leading-none'>
+                  搜索
+                </span>
               </Link>
             </nav>
 
@@ -282,11 +319,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
                       <div className='w-4 h-4 flex items-center justify-center'>
                         <Icon className='h-4 w-4 text-gray-500 group-hover:text-green-600 data-[active=true]:text-green-700 dark:text-gray-400 dark:group-hover:text-green-400 dark:data-[active=true]:text-green-400' />
                       </div>
-                      {!isCollapsed && (
-                        <span className='whitespace-nowrap transition-opacity duration-200 opacity-100'>
-                          {item.label}
-                        </span>
-                      )}
+                      <span className='sidebar-text inline-flex h-4 items-center whitespace-nowrap leading-none'>
+                        {item.label}
+                      </span>
                     </Link>
                   );
                 })}
@@ -295,9 +330,9 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
           </div>
         </aside>
         <div
-          className={`transition-all duration-300 sidebar-offset ${
-            isCollapsed ? 'w-16' : 'w-64'
-          }`}
+          className={`sidebar-offset ${
+            widthReady ? 'transition-[width] duration-300' : ''
+          } ${isCollapsed ? 'w-16' : 'w-64'}`}
         ></div>
       </div>
     </SidebarContext.Provider>
