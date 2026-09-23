@@ -107,6 +107,9 @@ export default async function RootLayout({
           href='/favicon-dark.ico'
           media='(prefers-color-scheme: dark)'
         />
+        {/* 预加载侧边栏 logo 图标，避免硬刷新时图片从网络重新拉取出现半秒空白闪 */}
+        <link rel='preload' as='image' href='/icons/icon-192x192.png' />
+        <link rel='preload' as='image' href='/icons/icon-192x192-dark.png' />
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         {/* 首帧即根据 localStorage 设定侧边栏收起态，避免 SSR 展开首帧导致的刷新跳动 */}

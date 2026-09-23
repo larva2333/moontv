@@ -79,30 +79,22 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // 初始态固定为展开(false)：服务端渲染与客户端水合首帧完全一致，
-  // 从根本上消除 Hydration mismatch；真实折叠状态由下方 layoutEffect 在绘制前同步应用。
-  // 客户端 CSR 首帧即读取 localStorage 决定折叠态，直接以正确宽度渲染，
-  // 从根上消灭「先展开(w-64)再收起」导致的刷新瞬间文字漏出。
-  // 主页为纯客户端渲染(SSR 不输出 <aside>)，无 hydration 需求；
-  // 若个别页面 SSR 输出了侧边栏，<aside> 上的 suppressHydrationWarning 会抑制告警。
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('sidebarCollapsed');
-        return saved !== null ? (JSON.parse(saved) as boolean) : false;
-      } catch {
-        return false;
-      }
-    }
-    return false;
-  });
+  // 初始态固定为展开(false)，与 SSR 输出的 w-64 完全一致，从根消除 Hydration
+  // mismatch(#418)。真实折叠态由下方 layoutEffect 在绘制前读取 localStorage 同步应用，
+  // 配合 layout.tsx 内联脚本与 globals.css 的 html[data-sidebar-collapsed] 规则，
+  // 首帧即按收起态渲染、文字隐藏，刷新不会先展开漏字再收起。
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [menuReady, setMenuReady] = useState(true);
   const [widthReady, setWidthReady] = useState(false);
   const isFirstMenuEffect = useRef(true);
 
   useIsoLayoutEffect(() => {
     try {
-      const collapsed = isCollapsed;
+      // 在绘制前同步读取真实折叠态：SSR 首帧为展开(false) 与 HTML 一致，
+      // 此处根据 localStorage 纠错为真实值，避免 hydration mismatch(#418)。
+      const saved = localStorage.getItem('sidebarCollapsed');
+      const collapsed = saved === 'true';
+      setIsCollapsed(collapsed);
       setMenuReady(!collapsed);
       window.__sidebarCollapsed = collapsed;
       // 同步 <html> 属性，配合 globals.css 收起态 CSS（双保险）
