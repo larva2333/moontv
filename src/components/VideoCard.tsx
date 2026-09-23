@@ -36,6 +36,7 @@ interface VideoCardProps {
   items?: SearchResult[];
   type?: string;
   priority?: boolean;
+  index?: number;
 }
 
 export default function VideoCard({
