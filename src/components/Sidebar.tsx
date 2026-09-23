@@ -81,19 +81,36 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const searchParams = useSearchParams();
   // 初始态固定为展开(false)：服务端渲染与客户端水合首帧完全一致，
   // 从根本上消除 Hydration mismatch；真实折叠状态由下方 layoutEffect 在绘制前同步应用。
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  // 刷新/SSR 默认展开，折叠按钮应首帧可见，避免晚 320ms 才挂载导致闪一下。
+  // 客户端 CSR 首帧即读取 localStorage 决定折叠态，直接以正确宽度渲染，
+  // 从根上消灭「先展开(w-64)再收起」导致的刷新瞬间文字漏出。
+  // 主页为纯客户端渲染(SSR 不输出 <aside>)，无 hydration 需求；
+  // 若个别页面 SSR 输出了侧边栏，<aside> 上的 suppressHydrationWarning 会抑制告警。
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('sidebarCollapsed');
+        return saved !== null ? (JSON.parse(saved) as boolean) : false;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
   const [menuReady, setMenuReady] = useState(true);
   const [widthReady, setWidthReady] = useState(false);
   const isFirstMenuEffect = useRef(true);
 
   useIsoLayoutEffect(() => {
     try {
-      const saved = localStorage.getItem('sidebarCollapsed');
-      const collapsed = saved !== null ? (JSON.parse(saved) as boolean) : false;
-      setIsCollapsed(collapsed);
+      const collapsed = isCollapsed;
       setMenuReady(!collapsed);
       window.__sidebarCollapsed = collapsed;
+      // 同步 <html> 属性，配合 globals.css 收起态 CSS（双保险）
+      if (collapsed) {
+        document.documentElement.setAttribute('data-sidebar-collapsed', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-sidebar-collapsed');
+      }
     } catch {
       /* 忽略 localStorage 读取失败 */
     }
@@ -199,6 +216,7 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
       <div className='hidden md:flex'>
         <aside
           data-sidebar
+          suppressHydrationWarning
           className={`fixed top-0 left-0 isolate z-10 h-screen border-r border-gray-200/50 shadow-lg dark:border-gray-700/50 ${
             widthReady ? 'transition-[width] duration-300' : ''
           } ${isCollapsed ? 'w-16' : 'w-64'}`}
@@ -215,30 +233,17 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
           <div className='relative flex h-full flex-col overflow-x-hidden'>
             {/* 顶部 Logo 区域 */}
             <div className='relative h-16 shrink-0'>
-              {!isCollapsed ? (
-                <Logo />
-              ) : (
+              {/* 始终渲染 Logo，使 logo 的 <img> 节点在展开/收起间保持稳定，
+                  避免条件渲染替换 DOM 子树导致图标重新加载闪烁 */}
+              <Logo />
+              {/* 收起态：覆盖一层透明按钮接管「点击展开」，不影响 Logo 的 img 节点 */}
+              {isCollapsed && (
                 <button
                   type='button'
                   onClick={handleToggle}
                   aria-label='展开侧边栏'
-                  className='flex w-full items-center justify-start pl-4 cursor-pointer bg-transparent border-0 p-0 appearance-none hover:opacity-80 transition-opacity duration-200 h-16'
-                >
-                  <img
-                    src='/icons/icon-192x192.png'
-                    alt='logo'
-                    width={32}
-                    height={32}
-                    className='h-8 w-8 shrink-0 object-contain block dark:hidden'
-                  />
-                  <img
-                    src='/icons/icon-192x192-dark.png'
-                    alt='logo'
-                    width={32}
-                    height={32}
-                    className='h-8 w-8 shrink-0 object-contain hidden dark:block'
-                  />
-                </button>
+                  className='absolute inset-0 z-0 cursor-pointer bg-transparent border-0 p-0 appearance-none hover:opacity-80 transition-opacity duration-200'
+                />
               )}
               {menuReady && (
                 <button
