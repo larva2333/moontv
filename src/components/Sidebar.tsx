@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @next/next/no-img-element */
 
 'use client';
 
@@ -32,8 +32,19 @@ const Logo = () => {
   return (
     <Link
       href='/'
-      className='flex items-center justify-center h-16 select-none hover:opacity-80 transition-opacity duration-200'
+      className='flex items-center justify-center gap-2 h-16 select-none hover:opacity-80 transition-opacity duration-200'
     >
+      {/* 浅色模式用蓝色电视，深色模式用白色电视 */}
+      <img
+        src='/icons/icon-192x192.png'
+        alt='logo'
+        className='h-8 w-8 object-contain block dark:hidden'
+      />
+      <img
+        src='/icons/icon-192x192-dark.png'
+        alt='logo'
+        className='h-8 w-8 object-contain hidden dark:block'
+      />
       <span className='text-2xl font-bold text-green-600 tracking-tight'>
         {siteName}
       </span>
@@ -53,41 +64,30 @@ declare global {
   }
 }
 
+// 同构 layoutEffect：SSR 用 useEffect（不执行、无 warning），
+// 客户端用 useLayoutEffect（浏览器首次绘制前同步执行），读取 localStorage 后即时重渲染，
+// 因此「收起态刷新」不会出现先展开再收起的闪烁。
+const useIsoLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+
 const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // 若同一次 SPA 会话中已经读取过折叠状态，则直接复用，避免闪烁
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    if (
-      typeof window !== 'undefined' &&
-      typeof window.__sidebarCollapsed === 'boolean'
-    ) {
-      return window.__sidebarCollapsed;
-    }
-    return false; // 默认展开
-  });
+  // 初始态固定为展开(false)：服务端渲染与客户端水合首帧完全一致，
+  // 从根本上消除 Hydration mismatch；真实折叠状态由下方 layoutEffect 在绘制前同步应用。
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
 
-  // 首次挂载时读取 localStorage，以便刷新后仍保持上次的折叠状态
-  useLayoutEffect(() => {
-    const saved = localStorage.getItem('sidebarCollapsed');
-    if (saved !== null) {
-      const val = JSON.parse(saved);
-      setIsCollapsed(val);
-      window.__sidebarCollapsed = val;
+  useIsoLayoutEffect(() => {
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      const collapsed = saved !== null ? (JSON.parse(saved) as boolean) : false;
+      setIsCollapsed(collapsed);
+      window.__sidebarCollapsed = collapsed;
+    } catch {
+      /* 忽略 localStorage 读取失败 */
     }
   }, []);
-
-  // 当折叠状态变化时，同步到 <html> data 属性，供首屏 CSS 使用
-  useLayoutEffect(() => {
-    if (typeof document !== 'undefined') {
-      if (isCollapsed) {
-        document.documentElement.dataset.sidebarCollapsed = 'true';
-      } else {
-        delete document.documentElement.dataset.sidebarCollapsed;
-      }
-    }
-  }, [isCollapsed]);
 
   const [active, setActive] = useState(activePath);
 
@@ -112,6 +112,13 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
     if (typeof window !== 'undefined') {
       window.__sidebarCollapsed = newState;
+    }
+    if (typeof document !== 'undefined') {
+      if (newState) {
+        document.documentElement.setAttribute('data-sidebar-collapsed', 'true');
+      } else {
+        document.documentElement.removeAttribute('data-sidebar-collapsed');
+      }
     }
     onToggle?.(newState);
   }, [isCollapsed, onToggle]);
@@ -173,23 +180,35 @@ const Sidebar = ({ onToggle, activePath = '/' }: SidebarProps) => {
           <div className='flex h-full flex-col'>
             {/* 顶部 Logo 区域 */}
             <div className='relative h-16'>
-              <div
-                className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-                  isCollapsed ? 'opacity-0' : 'opacity-100'
-                }`}
-              >
-                <div className='w-[calc(100%-4rem)] flex justify-center'>
-                  {!isCollapsed && <Logo />}
-                </div>
-              </div>
-              <button
-                onClick={handleToggle}
-                className={`absolute top-1/2 -translate-y-1/2 flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors duration-200 z-10 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50 ${
-                  isCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-2'
-                }`}
-              >
-                <Menu className='h-4 w-4' />
-              </button>
+              {!isCollapsed ? (
+                <Logo />
+              ) : (
+                <button
+                  type='button'
+                  onClick={handleToggle}
+                  aria-label='展开侧边栏'
+                  className='flex w-full items-center justify-center cursor-pointer bg-transparent border-0 p-0 appearance-none hover:opacity-80 transition-opacity duration-200 h-16'
+                >
+                  <img
+                    src='/icons/icon-192x192.png'
+                    alt='logo'
+                    className='h-8 w-8 object-contain block dark:hidden'
+                  />
+                  <img
+                    src='/icons/icon-192x192-dark.png'
+                    alt='logo'
+                    className='h-8 w-8 object-contain hidden dark:block'
+                  />
+                </button>
+              )}
+              {!isCollapsed && (
+                <button
+                  onClick={handleToggle}
+                  className='absolute top-1/2 -translate-y-1/2 right-2 flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100/50 transition-colors duration-200 z-10 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700/50'
+                >
+                  <Menu className='h-4 w-4' />
+                </button>
+              )}
             </div>
 
             {/* 首页和搜索导航 */}

@@ -174,3 +174,19 @@ div[data-media-provider] video {
     display: none !important;
   }
 }
+
+/* 侧边栏收起态：首帧即由 <html data-sidebar-collapsed> 控制，避免 SSR 展开首帧导致的刷新跳动(CLS) */
+html[data-sidebar-collapsed='true'] [data-sidebar] {
+  width: 4rem !important;
+}
+html[data-sidebar-collapsed='true'] .sidebar-offset {
+  width: 4rem !important;
+}
+/* 收起态直接隐藏菜单文字标签（与 SSR 首帧一致，避免刷新瞬间文字溢出闪现） */
+html[data-sidebar-collapsed='true'] [data-sidebar] span.whitespace-nowrap {
+  display: none !important;
+}
+/* 收起态隐藏头部展开的 Logo（SSR 首帧仍会渲染，靠 CSS 在首帧即隐藏，杜绝刷新闪一下） */
+html[data-sidebar-collapsed='true'] [data-sidebar] .relative.h-16 > a {
+  display: none !important;
+}

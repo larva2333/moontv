@@ -35,6 +35,7 @@ interface VideoCardProps {
   rate?: string;
   items?: SearchResult[];
   type?: string;
+  priority?: boolean;
 }
 
 export default function VideoCard({
@@ -54,6 +55,8 @@ export default function VideoCard({
   rate,
   items,
   type = '',
+  priority,
+  index,
 }: VideoCardProps) {
   const router = useRouter();
   const [favorited, setFavorited] = useState(false);
@@ -279,7 +282,8 @@ export default function VideoCard({
           fill
           className='object-cover'
           referrerPolicy='no-referrer'
-          onLoadingComplete={() => setIsLoading(true)}
+          priority={priority ?? (index ?? 0) < 10}
+          onLoad={() => setIsLoading(true)}
         />
 
         {/* 悬浮遮罩 */}

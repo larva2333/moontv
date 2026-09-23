@@ -96,8 +96,25 @@ export default async function RootLayout({
           content='width=device-width, initial-scale=1.0, viewport-fit=cover'
         />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
+        {/* favicon 按系统深浅色切换：浅色用蓝色电视，深色用白色电视 */}
+        <link
+          rel='icon'
+          href='/favicon.ico'
+          media='(prefers-color-scheme: light)'
+        />
+        <link
+          rel='icon'
+          href='/favicon-dark.ico'
+          media='(prefers-color-scheme: dark)'
+        />
         {/* 将配置序列化后直接写入脚本，浏览器端可通过 window.RUNTIME_CONFIG 获取 */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        {/* 首帧即根据 localStorage 设定侧边栏收起态，避免 SSR 展开首帧导致的刷新跳动 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem('sidebarCollapsed')==='true'){document.documentElement.setAttribute('data-sidebar-collapsed','true');}}catch(e){}`,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `window.RUNTIME_CONFIG = ${JSON.stringify(runtimeConfig)};`,

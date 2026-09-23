@@ -300,12 +300,13 @@ function SearchPageClient() {
                 className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'
               >
                 {viewMode === 'agg'
-                  ? aggregatedResults.map(([mapKey, group]) => {
+                  ? aggregatedResults.map(([mapKey, group], index) => {
                       return (
                         <div key={`agg-${mapKey}`} className='w-full'>
                           <VideoCard
                             from='search'
                             items={group}
+                            index={index}
                             query={
                               searchQuery.trim() !== group[0].title
                                 ? searchQuery.trim()
@@ -315,12 +316,13 @@ function SearchPageClient() {
                         </div>
                       );
                     })
-                  : searchResults.map((item) => (
+                  : searchResults.map((item, index) => (
                       <div
                         key={`all-${item.source}-${item.id}`}
                         className='w-full'
                       >
                         <VideoCard
+                          index={index}
                           id={item.id}
                           title={item.title}
                           poster={item.poster}

@@ -190,12 +190,13 @@ function HomeClient() {
                 )}
               </div>
               <div className='justify-start grid grid-cols-3 gap-x-2 gap-y-14 sm:gap-y-20 px-0 sm:px-2 sm:grid-cols-[repeat(auto-fill,_minmax(11rem,_1fr))] sm:gap-x-8'>
-                {favoriteItems.map((item) => (
+                {favoriteItems.map((item, index) => (
                   <div key={item.id + item.source} className='w-full'>
                     <VideoCard
                       query={item.search_title}
                       {...item}
                       from='favorite'
+                      index={index}
                       type={item.episodes > 1 ? 'tv' : ''}
                     />
                   </div>
@@ -249,6 +250,7 @@ function HomeClient() {
                         >
                           <VideoCard
                             from='douban'
+                            index={index}
                             title={movie.title}
                             poster={movie.poster}
                             douban_id={Number(movie.id)}
@@ -297,6 +299,7 @@ function HomeClient() {
                         >
                           <VideoCard
                             from='douban'
+                            index={index}
                             title={show.title}
                             poster={show.poster}
                             douban_id={Number(show.id)}
@@ -344,6 +347,7 @@ function HomeClient() {
                         >
                           <VideoCard
                             from='douban'
+                            index={index}
                             title={show.title}
                             poster={show.poster}
                             douban_id={Number(show.id)}

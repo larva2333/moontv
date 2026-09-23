@@ -539,6 +539,7 @@ function DoubanPageClient() {
                 doubanData.map((item, index) => (
                   <div key={`${item.title}-${index}`} className='w-full'>
                     <VideoCard
+                      priority={index < 16}
                       from='douban'
                       title={item.title}
                       poster={item.poster}

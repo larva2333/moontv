@@ -119,7 +119,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
               </div>
             ))
           : // 显示真实数据
-            playRecords.map((record) => {
+            playRecords.map((record, index) => {
               const { source, id } = parseKey(record.key);
               return (
                 <div
@@ -127,6 +127,7 @@ export default function ContinueWatching({ className }: ContinueWatchingProps) {
                   className='min-w-[96px] w-24 sm:min-w-[180px] sm:w-44'
                 >
                   <VideoCard
+                    index={index}
                     id={id}
                     title={record.title}
                     poster={record.cover}
