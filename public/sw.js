@@ -13,23 +13,17 @@ self.addEventListener('install', function () {
 });
 
 self.addEventListener('activate', function (event) {
+  // 仅清空所有旧缓存，避免旧 SW 残留的 HTML/JS 缓存继续被派发。
+  // 不调用 clients.claim()，避免强行接管已打开页面触发 React 重渲染（#329 瞬时抖动）。
   event.waitUntil(
-    caches
-      .keys()
-      .then(function (keys) {
-        return Promise.all(
-          keys.map(function (key) {
-            return caches.delete(key);
-          })
-        );
-      })
-      .then(function () {
-        return self.clients.claim();
-      })
+    caches.keys().then(function (keys) {
+      return Promise.all(
+        keys.map(function (key) {
+          return caches.delete(key);
+        })
+      );
+    })
   );
 });
 
-// 不拦截任何请求：所有资源都直接走网络，不再有缓存错配风险。
-self.addEventListener('fetch', function () {
-  // 不加任何缓存逻辑，交给浏览器默认处理
-});
+// 不注册 fetch 监听：所有资源都直接走网络，不再有缓存错配风险。
