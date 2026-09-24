@@ -8,5 +8,12 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# 图标等长期不变的静态资源：强制浏览器长期缓存（immutable），
+# 避免每次刷新都重新从网络下载（线上实测 icon 每次刷新都 200 + 500ms+ 导致闪烁）。
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [build.environment]
   NODE_VERSION = "20"

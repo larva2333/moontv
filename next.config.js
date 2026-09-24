@@ -11,6 +11,17 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // 图标等长期不变的静态资源：强制浏览器长期缓存（immutable），
+        // 避免每次刷新都重新从网络下载导致闪烁。
+        source: '/icons/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
         // 应用到所有路由，或精确指定到你的API路由，如 '/api/:path*'
         source: '/api/:path*',
         headers: [
