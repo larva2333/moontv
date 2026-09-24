@@ -11,8 +11,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // 图标等长期不变的静态资源：强制浏览器长期缓存（immutable），
-        // 避免每次刷新都重新从网络下载导致闪烁。
+        // 图标等长期不变的静态资源：强制浏览器长期缓存（immutable）
         source: '/icons/:path*',
         headers: [
           {
@@ -22,60 +21,45 @@ const nextConfig = {
         ],
       },
       {
-        // 应用到所有路由，或精确指定到你的API路由，如 '/api/:path*'
         source: '/api/:path*',
         headers: [
           {
             key: 'Netlify-Vary',
-            value: 'query', // 关键：告诉Netlify区分查询参数
+            value: 'query',
           },
         ],
       },
     ];
   },
 
-  // Uncoment to add domain whitelist
   images: {
     unoptimized: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-      {
-        protocol: 'http',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: '**' },
+      { protocol: 'http', hostname: '**' },
     ],
   },
 
   webpack(config) {
-    // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>
       rule.test?.test?.('.svg')
     );
 
     config.module.rules.push(
-      // Reapply the existing rule, but only for svg imports ending in ?url
       {
         ...fileLoaderRule,
         test: /\.svg$/i,
-        resourceQuery: /url/, // *.svg?url
+        resourceQuery: /url/,
       },
-      // Convert all other *.svg imports to React components
       {
         test: /\.svg$/i,
         issuer: { not: /\.(css|scss|sass)$/ },
-        resourceQuery: { not: /url/ }, // exclude if *.svg?url
+        resourceQuery: { not: /url/ },
         loader: '@svgr/webpack',
-        options: {
-          dimensions: false,
-          titleProp: true,
-        },
+        options: { dimensions: false, titleProp: true },
       }
     );
 
-    // Modify the file loader rule to ignore *.svg, since we have it handled now.
     fileLoaderRule.exclude = /\.svg$/i;
 
     config.resolve.fallback = {
@@ -89,16 +73,4 @@ const nextConfig = {
   },
 };
 
-// 关闭 Service Worker（PWA）。
-// 根因：next-pwa 生成的 SW 会在浏览器里长期缓存「上一次部署」的 HTML/JS，
-// 新部署后 SW 仍派发旧缓存 → 与新的客户端 JS 版本错配 → React #418/#423 整页重渲染（闪屏）。
-// 此工具是登录制内部站点，不需要离线/PWA，关掉即从根上消除该问题。
-// 若日后确需 PWA，请改用「navigation 走 NetworkFirst、永不缓存 HTML」的安全配置，且每次部署必须 bump SW 缓存版本。
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: true, // 始终关闭，不再生成/注册会错配的 Service Worker
-  register: false,
-  skipWaiting: false,
-});
-
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig;
