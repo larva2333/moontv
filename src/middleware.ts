@@ -123,6 +123,8 @@ function shouldSkipAuth(pathname: string): boolean {
     '/favicon-dark.ico',
     '/robots.txt',
     '/manifest.json',
+    '/sw.js',
+    '/workbox',
     '/icons/',
     '/logo.png',
     '/screenshot.png',
