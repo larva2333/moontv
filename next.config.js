@@ -8,13 +8,6 @@ const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
 
-  // 关闭自动字体优化：不再把字体提取成 /_next/static/media/*.woff2 并注入
-  // <link rel=preload as=font>。Netlify 的 @netlify/plugin-nextjs 运行时会对这些
-  // 提取出的字体额外注入 preload 链接，而本地 next start 不会，导致线上 <head>
-  // 比本地多一个元素、节点顺序错位 -> React 水合结构不匹配 (#418/#423 闪屏)。
-  // 关闭后字体按 CSS @font-face 原样加载，无 preload 注入，本地/线上 head 结构一致。
-  optimizeFonts: false,
-
   async headers() {
     return [
       {

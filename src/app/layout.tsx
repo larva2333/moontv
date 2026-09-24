@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
 
 import './globals.css';
 import 'sweetalert2/dist/sweetalert2.min.css';
@@ -12,8 +11,6 @@ import RuntimeConfig from '@/lib/runtime';
 import { GlobalErrorIndicator } from '../components/GlobalErrorIndicator';
 import { SiteProvider } from '../components/SiteProvider';
 import { ThemeProvider } from '../components/ThemeProvider';
-
-const inter = Inter({ subsets: ['latin'] });
 
 // 动态生成 metadata，支持配置更新后的标题变化
 export async function generateMetadata(): Promise<Metadata> {
@@ -99,11 +96,29 @@ export default async function RootLayout({
             __html: `(function(){try{var s=localStorage.getItem('theme');var t=s||'system';var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var dark=t==='dark'||(t==='system'&&d)||(t==='auto'&&d);var e=document.documentElement;if(dark){e.classList.add('dark');}else{e.classList.remove('dark');}e.style.colorScheme=dark?'dark':'light';}catch(_){}})();`,
           }}
         />
+        {/* 内联关键 CSS：在外部 tailwind/globals.css 加载前就确保 body 背景色正确，
+            彻底消除 Netlify 上因 CDN/Edge CSS 微延迟导致的深色模式白闪。
+            这段 <style> 紧跟在防 FOUC 脚本之后，脚本已为 <html> 设置好 dark 类，
+            所以 html.dark body 和 html:not(.dark) body 选择器能立即匹配。 */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `html.dark body{background-color:#000!important;color:#e5e7eb!important}html:not(.dark) body{background:linear-gradient(180deg,#e6f3fb 0%,#eaf3f7 18%,#f7f7f3 38%,#e9ecef 60%,#dbe3ea 80%,#d3dde6 100%)!important;background-attachment:fixed!important;color:#111827!important}`,
+          }}
+        />
         <meta
           name='viewport'
           content='width=device-width, initial-scale=1.0, viewport-fit=cover'
         />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
+        {/* Inter 字体：不用 next/font/google，直接 <link> 加载避免 Netlify OpenNext
+            强制注入额外的 font preload 链接（导致 <head> 结构错位 → React #418）。 */}
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          rel='stylesheet'
+          href='https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap'
+        />
+        {/* 和 Netlify OpenNext 运行时注入保持一致，消除 SSR/客户端结构差 */}
+        <meta name='next-size-adjust' />
         {/* favicon 按系统深浅色切换：浅色用蓝色电视，深色用白色电视 */}
         <link
           rel='icon'
@@ -132,9 +147,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body
-        className={`${inter.className} min-h-screen bg-white text-gray-900 dark:bg-black dark:text-gray-200`}
-      >
+      <body className='min-h-screen bg-white text-gray-900 dark:bg-black dark:text-gray-200'>
         <ThemeProvider
           attribute='class'
           defaultTheme='system'

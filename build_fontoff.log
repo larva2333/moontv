@@ -1,0 +1,68 @@
+  ▲ Next.js 14.2.30
+  - Environments: .env.local
+
+   Creating an optimized production build ...
+> [PWA] PWA support is disabled
+> [PWA] PWA support is disabled
+Browserslist: browsers data (caniuse-lite) is 16 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+   Generating static pages (0/10) ...
+   Generating static pages (2/10) 
+   Generating static pages (4/10) 
+   Generating static pages (7/10) 
+ ✓ Generating static pages (10/10)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    3.85 kB         307 kB
+├ ○ /_not-found                          871 B          88.1 kB
+├ ○ /admin                               43.1 kB         149 kB
+├ ƒ /api/admin/category                  0 B                0 B
+├ ƒ /api/admin/config                    0 B                0 B
+├ ƒ /api/admin/reset                     0 B                0 B
+├ ƒ /api/admin/site                      0 B                0 B
+├ ƒ /api/admin/source                    0 B                0 B
+├ ƒ /api/admin/user                      0 B                0 B
+├ ƒ /api/change-password                 0 B                0 B
+├ ƒ /api/cron                            0 B                0 B
+├ ƒ /api/detail                          0 B                0 B
+├ ƒ /api/douban                          0 B                0 B
+├ ƒ /api/douban/categories               0 B                0 B
+├ ƒ /api/douban/recommands               0 B                0 B
+├ ƒ /api/favorites                       0 B                0 B
+├ ƒ /api/image-proxy                     0 B                0 B
+├ ƒ /api/login                           0 B                0 B
+├ ƒ /api/logout                          0 B                0 B
+├ ƒ /api/playrecords                     0 B                0 B
+├ ƒ /api/register                        0 B                0 B
+├ ƒ /api/search                          0 B                0 B
+├ ƒ /api/search/one                      0 B                0 B
+├ ƒ /api/search/resources                0 B                0 B
+├ ƒ /api/searchhistory                   0 B                0 B
+├ ƒ /api/server-config                   0 B                0 B
+├ ƒ /api/skipconfigs                     0 B                0 B
+├ ○ /douban                              6.78 kB         310 kB
+├ ○ /login                               4.74 kB          92 kB
+├ ○ /play                                52.2 kB         346 kB
+├ ○ /search                              5.72 kB         305 kB
+└ ○ /warning                             136 B          87.4 kB
++ First Load JS shared by all            87.2 kB
+  ├ chunks/29-0844689411ca7d55.js        31.6 kB
+  ├ chunks/51b697cb-f464f3017ac1ea30.js  53.6 kB
+  └ other shared chunks (total)          2.01 kB
+
+
+ƒ Middleware                             27.2 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

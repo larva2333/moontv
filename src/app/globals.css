@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Inter 字体：不再依赖 next/font/google，通过 <link> 在 head 中直接引入 */
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none; /* IE and Edge */

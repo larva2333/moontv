@@ -1,17 +1,10 @@
 [build]
-  # 构建前清掉 .next（含 Next 增量构建缓存 .next/cache），避免复用旧静态 chunk 导致
-  # 服务端代码已更新、但 /_next/static 静态资源仍是旧版本（chunk 错位、#418 修不掉）。
-  # 注意：@netlify/plugin-nextjs 会在命令执行前恢复 .next/cache，因此此处 rm -rf .next
-  # 必须放在命令开头，确保 next build 在干净目录中从源码全量重编。
-  command = "rm -rf .next && pnpm build"
-  # 不手动指定 publish：交给 @netlify/plugin-nextjs 全权管理发布目录，
-  # 手动写 publish = ".next" 会与该 plugin 冲突，导致静态资源版本与函数代码版本不一致。
+  command = "pnpm build"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# 图标等长期不变的静态资源：强制浏览器长期缓存（immutable），
-# 避免每次刷新都重新从网络下载（线上实测 icon 每次刷新都 200 + 500ms+ 导致闪烁）。
+# 图标等长期不变的静态资源：强制浏览器长期缓存（immutable）
 [[headers]]
   for = "/icons/*"
   [headers.values]
@@ -19,27 +12,3 @@
 
 [build.environment]
   NODE_VERSION = "20"
-
-# 根治 #418/#423 闪屏（已用无头浏览器实测证实）：
-# Netlify 的 Asset Optimization 会在 <head> 注入额外的 <link rel="preload" as="font" ...woff2>，
-# 而本地 next build / Vercel 的产物里根本没有这条 link。这条「服务端多出、客户端不预期」的元素
-# 会把 <head> 后续节点整体错一位，React 水合时在同位置看到意外节点 → 整页重渲染（#418/#423）→ 闪屏。
-# 本地/Node 与 Vercel 都不注入，所以都干净；只有 Netlify 注入 → 只有 Netlify 闪。
-# 必须把 skip_processing 设为 true 才能连「Preload 注入」一起关掉（子项 minify/bundle 关不掉它）。
-# 注意：Build cache 的关闭无法用 toml 控制，必须在 Netlify 后台 UI 操作（见说明）。
-[build.processing]
-  skip_processing = true
-
-[build.processing.css]
-  bundle = false
-  minify = false
-
-[build.processing.js]
-  bundle = false
-  minify = false
-
-[build.processing.images]
-  compress = false
-
-[build.processing.html]
-  pretty_urls = false

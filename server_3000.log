@@ -1,0 +1,16 @@
+ ⨯ Failed to start server
+Error: listen EADDRINUSE: address already in use :::3000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at C:\Users\lixia\IdeaProjects\moontv\node_modules\.pnpm\next@14.2.30_@babel+core@7._9960d4ec3ace0dc381872aaaee443d1f\node_modules\next\dist\server\lib\start-server.js:280:16
+    at new Promise (<anonymous>)
+    at startServer (C:\Users\lixia\IdeaProjects\moontv\node_modules\.pnpm\next@14.2.30_@babel+core@7._9960d4ec3ace0dc381872aaaee443d1f\node_modules\next\dist\server\lib\start-server.js:191:11)
+    at Module.nextStart (C:\Users\lixia\IdeaProjects\moontv\node_modules\.pnpm\next@14.2.30_@babel+core@7._9960d4ec3ace0dc381872aaaee443d1f\node_modules\next\dist\cli\next-start.js:25:40)
+    at C:\Users\lixia\IdeaProjects\moontv\node_modules\.pnpm\next@14.2.30_@babel+core@7._9960d4ec3ace0dc381872aaaee443d1f\node_modules\next\dist\bin\next:105:856 {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3000
+}
