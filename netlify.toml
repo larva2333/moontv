@@ -19,3 +19,27 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# 根治 #418/#423 闪屏（已用无头浏览器实测证实）：
+# Netlify 的 Asset Optimization 会在 <head> 注入额外的 <link rel="preload" as="font" ...woff2>，
+# 而本地 next build / Vercel 的产物里根本没有这条 link。这条「服务端多出、客户端不预期」的元素
+# 会把 <head> 后续节点整体错一位，React 水合时在同位置看到意外节点 → 整页重渲染（#418/#423）→ 闪屏。
+# 本地/Node 与 Vercel 都不注入，所以都干净；只有 Netlify 注入 → 只有 Netlify 闪。
+# 必须把 skip_processing 设为 true 才能连「Preload 注入」一起关掉（子项 minify/bundle 关不掉它）。
+# 注意：Build cache 的关闭无法用 toml 控制，必须在 Netlify 后台 UI 操作（见说明）。
+[build.processing]
+  skip_processing = true
+
+[build.processing.css]
+  bundle = false
+  minify = false
+
+[build.processing.js]
+  bundle = false
+  minify = false
+
+[build.processing.images]
+  compress = false
+
+[build.processing.html]
+  pretty_urls = false
