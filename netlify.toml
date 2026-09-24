@@ -1,6 +1,8 @@
 [build]
-  # 强制先清掉 .next，避免 Netlify 构建缓存复用旧的静态 chunk，
-  # 否则会出现「服务端代码已更新、但 /_next/static 静态资源仍是旧版本」的错位（#418 修不掉）。
+  # 构建前清掉 .next（含 Next 增量构建缓存 .next/cache），避免复用旧静态 chunk 导致
+  # 服务端代码已更新、但 /_next/static 静态资源仍是旧版本（chunk 错位、#418 修不掉）。
+  # 注意：@netlify/plugin-nextjs 会在命令执行前恢复 .next/cache，因此此处 rm -rf .next
+  # 必须放在命令开头，确保 next build 在干净目录中从源码全量重编。
   command = "rm -rf .next && pnpm build"
   # 不手动指定 publish：交给 @netlify/plugin-nextjs 全权管理发布目录，
   # 手动写 publish = ".next" 会与该 plugin 冲突，导致静态资源版本与函数代码版本不一致。
