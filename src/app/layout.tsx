@@ -91,12 +91,18 @@ export default async function RootLayout({
   return (
     <html lang='zh-CN' suppressHydrationWarning>
       <head>
+        {/* 防深色模式首屏白闪(FOUC)：在 <html> 解析早期、<body> 绘制前，依据
+            next-themes 默认配置(storageKey='theme', defaultTheme='system')同步设置 dark 类。
+            逻辑与 next-themes 客户端一致，确保深色用户首帧即深色，避免白底一闪。 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('theme');var t=s||'system';var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var dark=t==='dark'||(t==='system'&&d)||(t==='auto'&&d);var e=document.documentElement;if(dark){e.classList.add('dark');}else{e.classList.remove('dark');}e.style.colorScheme=dark?'dark':'light';}catch(_){}})();`,
+          }}
+        />
         <meta
           name='viewport'
           content='width=device-width, initial-scale=1.0, viewport-fit=cover'
         />
-        {/* BUILD-MARKER: 用于验证 Netlify 是否真正部署了 302392d 之后的源码。线上抓取此 meta 即证明新源已生效。 */}
-        <meta name='x-build-marker' content='MARKER-302392d-FIXED-20260924' />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
         {/* favicon 按系统深浅色切换：浅色用蓝色电视，深色用白色电视 */}
         <link
