@@ -89,11 +89,16 @@ const nextConfig = {
   },
 };
 
+// 关闭 Service Worker（PWA）。
+// 根因：next-pwa 生成的 SW 会在浏览器里长期缓存「上一次部署」的 HTML/JS，
+// 新部署后 SW 仍派发旧缓存 → 与新的客户端 JS 版本错配 → React #418/#423 整页重渲染（闪屏）。
+// 此工具是登录制内部站点，不需要离线/PWA，关掉即从根上消除该问题。
+// 若日后确需 PWA，请改用「navigation 走 NetworkFirst、永不缓存 HTML」的安全配置，且每次部署必须 bump SW 缓存版本。
 const withPWA = require('next-pwa')({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  register: true,
-  skipWaiting: true,
+  disable: true, // 始终关闭，不再生成/注册会错配的 Service Worker
+  register: false,
+  skipWaiting: false,
 });
 
 module.exports = withPWA(nextConfig);

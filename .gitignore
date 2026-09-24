@@ -45,7 +45,8 @@ src/lib/runtime.ts
 public/manifest.json
 
 # next-pwa build artifacts (regenerated on every build)
-public/sw.js
+# 注意：public/sw.js 现在是手工维护的「无害空 SW」（用于 Neutralize 旧 SW 缓存），
+# 必须纳入版本控制并随部署发布，故不再忽略；workbox 生成物仍忽略。
 public/workbox-*.js
 public/sw.js.map
 public/workbox-*.js.map
