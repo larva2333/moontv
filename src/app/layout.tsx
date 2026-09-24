@@ -95,6 +95,8 @@ export default async function RootLayout({
           name='viewport'
           content='width=device-width, initial-scale=1.0, viewport-fit=cover'
         />
+        {/* BUILD-MARKER: 用于验证 Netlify 是否真正部署了 302392d 之后的源码。线上抓取此 meta 即证明新源已生效。 */}
+        <meta name='x-build-marker' content='MARKER-302392d-FIXED-20260924' />
         <link rel='apple-touch-icon' href='/icons/icon-192x192.png' />
         {/* favicon 按系统深浅色切换：浅色用蓝色电视，深色用白色电视 */}
         <link
