@@ -21,7 +21,10 @@ import {
   saveSkipConfig,
   subscribeToDataUpdates,
 } from '@/lib/db.client';
-import { filterAdsFromM3U8 } from '@/lib/m3u8AdFilter';
+import {
+  filterAdsFromM3U8,
+  filterAdsFromM3U8Resolved,
+} from '@/lib/m3u8AdFilter';
 import { SearchResult } from '@/lib/types';
 import { getVideoResolutionFromM3u8, processImageUrl } from '@/lib/utils';
 
@@ -682,8 +685,19 @@ function PlayPageClient() {
           ) {
             // 如果是m3u8文件，处理内容以移除广告分段
             if (response.data && typeof response.data === 'string') {
-              // 过滤掉广告段 - 实现更精确的广告过滤逻辑
-              response.data = filterAdsFromM3U8(response.data);
+              const playlistUrl =
+                context && typeof context.url === 'string' ? context.url : '';
+              const original = response.data;
+              filterAdsFromM3U8Resolved(original, playlistUrl)
+                .then((text) => {
+                  response.data = text;
+                  onSuccess(response, stats, context, null);
+                })
+                .catch(() => {
+                  response.data = filterAdsFromM3U8(original);
+                  onSuccess(response, stats, context, null);
+                });
+              return;
             }
             return onSuccess(response, stats, context, null);
           };
